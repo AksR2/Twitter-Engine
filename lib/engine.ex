@@ -11,6 +11,9 @@ defmodule Engine do
     # :mentions {mention , {userid, tweet}}
     # :tweets {user_id, {tweet_id, tweet}}
 
+    # userid has to be an atom take care of that.... since we will create named clients...
+    # will probably have to create a reverse map...
+
     def init(:ok) do
         state = %{}
         {_, tweets} = Map.get_and_update(state, :tweets, fn currentVal -> {currentVal, :ets.new(:tweets, [:set, :named_table])} end)
@@ -29,10 +32,19 @@ defmodule Engine do
         {:ok, state}
     end
 
+    #the user id number from the server...
+    def genClientIDatom(userid) do
+        #append id with a c
+        String.to_atom("c#{userid}")
+    
+    end
+
     # Might want to add password / login table for part 2 right now if all goes well...
     def handle_cast({:register_user}, state) do
         users = state[:users]
         user_id = state[:user_id]
+        #convert user_id to an atom form which is prefixed by a 'c'
+        user_id = genClientIDatom(user_id)
         :ets.insert(users, {user_id, {}, {user_id}})
         {_, user_id} = Map.get_and_update(state, :user_id, fn currentVal -> {currentVal, user_id + 1} end)
         state = Map.merge(state, user_id)
@@ -98,14 +110,23 @@ defmodule Engine do
 
     #distribute
     #fetchtweets when user joins in the network...
-    def handle_cast({:fetchtweets, user_id}) do
+    # the user_id well be a genserver....
+    #should be a call since it will 
+    def handle_call({:fetchtweets, user_id}, _from ,state) do
         users = state[:users]
         user_entry = :ets.lookup(users, user_id)
-
+        tweets_table= state[:tweets]
         #list subscribed
-        list_of_subscribed= elem(user_enty,1)
+        tuple_of_subscribed= List.first(elem(user_enty,1))
+        list_of_subscribed=Tuple.to_list(tuple_of_subscribed)
+        tup_tweet=
+        Enum.reduce(list_of_subscribed,{}, fn(subscribed_id,acc_tup_tweets) -> (
+            tweets_by_subscribed=:ets.lookup(tweets_table,subscribed_id)
+            Tuple.append(acc_tup_tweets,List.first(tweets_by_subscribed))
+            
+        )end)
         
-
+        {:reply,tup_tweet,state}
     end
 
     def handle_call({:query_hashtag, hashtag}) do
