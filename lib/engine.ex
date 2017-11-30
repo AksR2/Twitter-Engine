@@ -101,6 +101,10 @@ defmodule Engine do
         tuple_user_followers = elem(tuple_user_entry, 1)
         list_followers = Tuple.to_list(tuple_user_followers)
         Enum.each(list_followers, fn element -> {
+            isAlive = Genserver.call(element, {:is_alive})
+            if isAlive == true do
+                GenServer.cast(element, {:recieve_tweets, tweet}) 
+            end
             # should send the tweet to all the followers currently online...
             #check state of client whether he is online before sending the tweet...
             #this is the live functionality...
