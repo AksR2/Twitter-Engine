@@ -68,7 +68,7 @@ defmodule Engine do
         tuple_user_followers = elem(tuple_user_entry, 1)
         tuple_user_subscribed = elem(tuple_user_entry, 2)
         tuple_user_subscribed = Tuple.append(tuple_user_subscribed, user_id_followed)
-        :ets.insert(users,{user_id_followed, tuple_user_followers, tuple_user_subscribed})
+        :ets.insert(users,{user_id_follower, tuple_user_followers, tuple_user_subscribed})
 
         {:noreply, state}
     end
@@ -82,41 +82,43 @@ defmodule Engine do
         list_of_hashtags = Regex.scan(~r/\B#[a-zA-Z0-9_]+/, tweet)
         list_of_mentions = Regex.scan(~r/\B@[a-zA-Z0-9_]+/, tweet)
         Enum.each(list_of_hashtags, fn innerList -> {
-            Enum.each(innerList, fn element -> {
-                :ets.insert(hashtags, {element, {user_id, tweet}})
+            Enum.each(innerList, fn hashtag_id -> {
+                :ets.insert(hashtags, {hashtag_id, {user_id, tweet}})
             } end)
         } end)
 
         Enum.each(list_of_mentions, fn innerList -> {
-            Enum.each(innerList, fn element -> {
-                :ets.insert(mentions, {element, {user_id, mentions}})
+            Enum.each(innerList, fn mentions_id -> {
+                :ets.insert(mentions, {mentions_id, {user_id, mentions}})
             } end)
         } end)
 
         :ets.insert(tweets, {user_id, {tweet_id,tweet})
         {_, tweet_id} = Map.get_and_update(state, :tweet_id, fn currentVal -> {currentVal, tweet_id + 1} end)
         state = Map.merge(state, tweet_id)
-        user_entry = :ets.lookup(users, user_id_followed)
+
+        #live tweet functionality...
+        user_entry = :ets.lookup(users, user_id)
         tuple_user_entry = List.first(user_entry)
         tuple_user_followers = elem(tuple_user_entry, 1)
         list_followers = Tuple.to_list(tuple_user_followers)
-        Enum.each(list_followers, fn element -> {
-            isAlive = Genserver.call(element, {:is_alive})
+        Enum.each(list_followers, fn follower_id -> {
+            isAlive = Genserver.call(follower_id, {:is_alive})
             if isAlive == true do
-                GenServer.cast(element, {:recieve_tweets, tweet}) 
+                GenServer.cast(follower_id, {:recieve_tweets, tweet}) 
             end
             # should send the tweet to all the followers currently online...
             #check state of client whether he is online before sending the tweet...
             #this is the live functionality...
         } end)
+        
         {:noreply, state}
     end
 
-    #distribute
     #fetchtweets when user joins in the network...
     # the user_id well be a genserver....
     #should be a call since it will 
-    def handle_call({:fetchtweets, user_id}, _from ,state) do
+    def handle_call({:fetchtweets, user_id}, from ,state) do
         users = state[:users]
         user_entry = :ets.lookup(users, user_id)
         tweets_table= state[:tweets]
@@ -127,22 +129,23 @@ defmodule Engine do
         Enum.reduce(list_of_subscribed,{}, fn(subscribed_id,acc_tup_tweets) -> (
             tweets_by_subscribed=:ets.lookup(tweets_table,subscribed_id)
             Tuple.append(acc_tup_tweets,List.first(tweets_by_subscribed))
-            
         )end)
         
-        {:reply,tup_tweet,state}
+        {:reply, tup_tweet, state}
     end
 
-    def handle_call({:query_hashtag, hashtag}) do
+    def handle_call({:query_hashtag, hashtag}, from, state) do
         hashtags = state[:hastags]
         hashtags = :ets.lookup(hashtags, hashtag)
-        {:reply, hashtags}
+        hashtags = List.first(hashtags)
+        {:reply, hashtags, state}
     end
 
-    def handle_call({:query_mention, mention}) do
+    def handle_call({:query_mention, mention}, from, state) do
         mentions = state[:mentions]
         mentions = :ets.lookup(mentions, mention)
-        {:reply, mentions}
+        mentions = List.first(mentions)
+        {:reply, mentions , state}
     end
 
 

@@ -8,6 +8,10 @@ defmodule Client do
         {:ok,state}
     end
 
+    def handle_call({:is_alive}, from, state) do
+        
+    end
+
     def handle_cast({:recieve_tweets, self_name, tup_tweets},state) do
         #check number 
         num_tweets = tuple_size(tup_tweets)
