@@ -1,6 +1,11 @@
 defmodule Client do
     use GenServer
 
+    def start_client(id) do
+        {:ok, pid} = Genserver.start(__MODULE__, init_opts,name: id)
+        {:ok, pid}
+    end
+
     def init() do
         state=%init{}
         {_,conn_stat} = Map.get_and_update(state, :conn_stat, fn currentVal -> {currentVal, true} end)
