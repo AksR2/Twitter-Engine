@@ -2,7 +2,6 @@ defmodule Simulator do
     use GenServer
 
     def createUsers(list_number_of_users) do
-        [number_of_users | tail] = list_number_of_users
         range = 1..number_of_users
         Enum.each(range, fn(user_id) -> {
             client_name = "c#{user_id}" 

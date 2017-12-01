@@ -30,10 +30,10 @@ defmodule Project4 do
     cond do
       start_option == 1 ->
         #start the engine and provide the number of users
-        spawn(Engine, startEngine, [number_of_users])
+        Engine.startEngine(number_of_users)
       start_option == 2 ->
         #start the simulator
-        spawn(Simulator, createUsers, [number_of_users])
+        Simulator(createUsers, number_of_users)
     end
     looper()
   end
