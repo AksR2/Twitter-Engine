@@ -20,14 +20,14 @@ defmodule Engine do
         {_, users} = Map.get_and_update(state, :users, fn currentVal -> {currentVal, :ets.new(:users, [:set, :named_table])} end)
         {_, hashtags} = Map.get_and_update(state, :hashtags, fn currentVal -> {currentVal, :ets.new(:hashtags, [:duplicate_bag, :named_table])} end)
         {_, mentions} = Map.get_and_update(state, :mentions, fn currentVal -> {currentVal, :ets.new(:mentions, [:duplicate_bag, :named_table])} end)
-        {_, user_id} = Map.get_and_update(state, :user_id, fn currentVal -> {currentVal, 1} end)
+        {_, simulator_id} = Map.get_and_update(state, :simulator_id, fn currentVal -> {currentVal, 1} end)
         {_, tweet_id} = Map.get_and_update(state, :tweet_id, fn currentVal -> {currentVal, 1} end)
         
         state = Map.merge(state, tweets)
         state = Map.merge(state, users)
         state = Map.merge(state, hashtags)
         state = Map.merge(state, mentions)
-        state = Map.merge(state, user_id)
+        state = Map.merge(state, simulator_id)
         state = Map.merge(state, tweet_id)
         {:ok, state}
     end
@@ -36,18 +36,12 @@ defmodule Engine do
     def genClientIDatom(userid) do
         #append id with a c
         String.to_atom("c#{userid}")
-    
     end
 
     # Might want to add password / login table for part 2 right now if all goes well...
-    def handle_cast({:register_user}, state) do
+    def handle_cast({:register_user, user_id}, state) do
         users = state[:users]
-        user_id = state[:user_id]
-        #convert user_id to an atom form which is prefixed by a 'c'
-        user_id = genClientIDatom(user_id)
         :ets.insert(users, {user_id, {}, {user_id}})
-        {_, user_id} = Map.get_and_update(state, :user_id, fn currentVal -> {currentVal, user_id + 1} end)
-        state = Map.merge(state, user_id)
         {:noreply, state}
     end
 
@@ -146,6 +140,15 @@ defmodule Engine do
         mentions = :ets.lookup(mentions, mention)
         mentions = List.first(mentions)
         {:reply, mentions , state}
+    end
+
+    #send unique code to simulator
+    def handle_call({:send_unique_code}, from, state) do
+        simulator_id = state[:simulator_id]
+        simulator_name = "s" <> Integer.to_string(simulator_id)
+        {_, simulator_id} = Map.get_and_update(state, :simulator_id, fn currentVal -> {currentVal, simulator_id + 1} end)
+        state = Map.merge(state, simulator_id)
+        {:replay, simulator_name, state}
     end
 
 
