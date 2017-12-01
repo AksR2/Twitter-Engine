@@ -1,7 +1,7 @@
 defmodule Client do
     use GenServer
 
-    def start_client(id) do
+    def startClient(id) do
         {:ok, pid} = Genserver.start(__MODULE__, init_opts,name: id)
         {:ok, pid}
     end
