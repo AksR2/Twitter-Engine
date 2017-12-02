@@ -40,7 +40,7 @@ defmodule Project4 do
         
         #start the engine and provide the number of users
         Engine.startEngine()
-        IO.puts Client.testEngine()
+        # IO.puts Client.testEngine()
         IO.puts "Started engine"
 
       start_option == "2" ->

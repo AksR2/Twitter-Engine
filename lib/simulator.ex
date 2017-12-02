@@ -8,15 +8,19 @@ defmodule Simulator do
 
 
     def simulate(num_users) do
+        IO.puts("Getting code")
         sim_name = GenServer.call({:global,:Daddy},{:send_unique_code})
+        IO.puts("Creating users")
         create_users(num_users, sim_name)
+        IO.puts("Setting followers")
         set_followers(num_users, sim_name)
+        IO.puts("Sending tweets")
         send_tweet(num_users,1, sim_name)
+        IO.puts("Fetching tweets")
+        fetch_tweets(num_users, sim_name)
     end
 
     def create_users(num_users, sim_name) do
-
-
         range = 1..num_users
         Enum.each(range, fn(user_id) -> (
             client_name = "#{sim_name}c#{user_id}"
@@ -28,10 +32,11 @@ defmodule Simulator do
     end
 
     def set_followers(num_users,sim_name) do
+        # IO.inspect("Setting the followers")
         range = 1..num_users
         #here the user_id is being followed by the follower_id
         Enum.each(range, fn(user_id) -> (
-            max_lim = round(Float.floor(num_users/user_id))
+            max_lim = round(Float.ceil(num_users/user_id))
             followers_range= 1..max_lim
             Enum.each(followers_range, fn(follower_id) -> (
                 user_id_atom = String.to_existing_atom("#{sim_name}c#{user_id}")
@@ -47,7 +52,6 @@ defmodule Simulator do
 
     def send_tweet(num_users, num_tweets, sim_name) do
         user_range= 1..num_users
-        
         Enum.each(user_range, fn(user_id) -> (
             random_tweet=Client.random_tweet(num_users)
             user_id_atom=String.to_existing_atom("#{sim_name}c#{user_id}")
@@ -55,5 +59,16 @@ defmodule Simulator do
          ) end)
 
         #can call it recursively...
+    end
+
+    def fetch_tweets(num_users, sim_name) do
+        user_range= 1..num_users
+        Enum.each(user_range, fn (user_id) -> (
+            # random_tweet=Client.random_tweet(num_users)
+            user_id_atom=String.to_existing_atom("#{sim_name}c#{user_id}")
+            tup = GenServer.call({:global , :Daddy}, {:fetch_tweets, user_id_atom})
+            IO.inspect("#{user_id_atom} :")
+            IO.inspect(tup)
+         ) end)
     end
 end

@@ -41,6 +41,7 @@ defmodule Engine do
     # Might want to add password / login table for part 2 right now if all goes well...
     def handle_cast({:register_user, user_id}, state) do
         users = state[:users]
+        # IO.inspect("Connecting user: #{user_id}")
         :ets.insert(users, {user_id, {}, {user_id}})
         {:noreply, state}
     end
@@ -90,22 +91,21 @@ defmodule Engine do
         :ets.insert(tweets, {user_id, {tweet_id,tweet}})
         {_, tweet_id} = Map.get_and_update(state, :tweet_id, fn currentVal -> {currentVal, tweet_id + 1} end)
         state = Map.merge(state, tweet_id)
-
+        tweet_id = state[:tweet_id]
         #live tweet functionality...
         user_entry = :ets.lookup(users, user_id)
         tuple_user_entry = List.first(user_entry)
         tuple_user_followers = elem(tuple_user_entry, 1)
         list_followers = Tuple.to_list(tuple_user_followers)
-
         Enum.each(list_followers, fn (follower_id) -> (
-
-            is_alive = GenServer.call({:global, follower_id}, {:is_alive})
-            cond do
-                is_alive == true ->
-                    GenServer.cast({:global,follower_id}, {:recieve_tweets, tweet}) 
-                true ->
-                     IO.puts "Tweet not sent to #{follower_id}"
-            end
+            GenServer.cast({:global,follower_id}, {:recieve_tweets, follower_id, {tweet_id, tweet}})
+            # is_alive = GenServer.call({:global, follower_id}, {:is_alive})
+            # cond do
+            #     is_alive == true ->
+            #         GenServer.cast({:global,follower_id}, {:recieve_tweets, tweet}) 
+            #     true ->
+            #          IO.puts "Tweet not sent to #{follower_id}"
+            # end
             # should send the tweet to all the followers currently online...
             #check state of client whether he is online before sending the tweet...
             #this is the live functionality...
@@ -117,19 +117,20 @@ defmodule Engine do
     #fetchtweets when user joins in the network...
     # the user_id well be a genserver....
     #should be a call since it will 
-    def handle_call({:fetchtweets, user_id}, _from ,state) do
+    def handle_call({:fetch_tweets, user_id}, _from, state) do
         users = state[:users]
-        user_entry = :ets.lookup(users, user_id)
         tweets_table= state[:tweets]
-        #list subscribed
-        tuple_of_subscribed= List.first(elem(user_entry,1))
-        list_of_subscribed=Tuple.to_list(tuple_of_subscribed)
+
+        user_entry = :ets.lookup(users, user_id)
+        tuple_user_entry = List.first(user_entry)
+        tuple_of_subscribed = elem(tuple_user_entry, 2)
+        list_subscribed = Tuple.to_list(tuple_of_subscribed)
+        IO.inspect(list_subscribed)
         tup_tweet=
-        Enum.reduce(list_of_subscribed,{}, fn(subscribed_id,acc_tup_tweets) -> (
+        Enum.reduce(list_subscribed,{}, fn(subscribed_id,acc_tup_tweets) -> (
             tweets_by_subscribed=:ets.lookup(tweets_table,subscribed_id)
             Tuple.append(acc_tup_tweets,List.first(tweets_by_subscribed))
         )end)
-        
         {:reply, tup_tweet, state}
     end
 
