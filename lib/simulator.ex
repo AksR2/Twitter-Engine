@@ -18,6 +18,8 @@ defmodule Simulator do
         send_tweet(num_users,1, sim_name)
         IO.puts("Fetching tweets")
         fetch_tweets(num_users, sim_name)
+        IO.puts("Checking the mentions")
+        simulate_hashtag_query(num_users,sim_name)
     end
 
     def create_users(num_users, sim_name) do
@@ -53,7 +55,7 @@ defmodule Simulator do
     def send_tweet(num_users, num_tweets, sim_name) do
         user_range= 1..num_users
         Enum.each(user_range, fn(user_id) -> (
-            random_tweet=Client.random_tweet(num_users,user_id)
+            random_tweet=Client.random_tweet(num_users,user_id,sim_name)
             user_id_atom=String.to_existing_atom("#{sim_name}c#{user_id}")
             GenServer.cast({:global , :Daddy},{:tweet, user_id_atom, random_tweet})
          ) end)
@@ -67,8 +69,29 @@ defmodule Simulator do
             # random_tweet=Client.random_tweet(num_users)
             user_id_atom=String.to_existing_atom("#{sim_name}c#{user_id}")
             tup = GenServer.call({:global , :Daddy}, {:fetch_tweets, user_id_atom})
-            IO.inspect("#{user_id_atom} :")
-            IO.inspect(tup)
+            # IO.inspect("#{user_id_atom} :")
+            # IO.inspect(tup)
+            num_tweets= tuple_size(tup)
+            # tup0=elem(tup,0)
+            # tup1=elem(tup,1)
+            # IO.puts "1st element of the tuple #{inspect tup0} and #{inspect tup1}"
+             IO.puts "Number of tweets by #{inspect user_id_atom}: #{num_tweets}"
          ) end)
+    end
+
+    def simulate_hashtag_query(num_users, sim_name) do
+        user_range = 1..num_users
+
+        Enum.each( user_range, fn (user_id) -> (
+            mention_id="@#{sim_name}c#{user_id}"
+            tup = GenServer.call({:global, :Daddy}, {:query_mention, mention_id})
+            num_mentions = tuple_size(elem(tup,1))
+            if (num_mentions != 0) do
+                IO.puts "The user_id: #{inspect user_id} has mentions : #{inspect num_mentions}"
+            # IO.inspect(tup)
+            end
+
+        ) end)
+
     end
 end

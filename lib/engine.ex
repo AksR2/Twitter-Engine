@@ -24,11 +24,19 @@ defmodule Engine do
         state = %{}
         {_, tweets} = Map.get_and_update(state, :tweets, fn currentVal -> {currentVal, :ets.new(:tweets, [:set, :named_table])} end)
         {_, users} = Map.get_and_update(state, :users, fn currentVal -> {currentVal, :ets.new(:users, [:set, :named_table])} end)
-        {_, hashtags} = Map.get_and_update(state, :hashtags, fn currentVal -> {currentVal, :ets.new(:hashtags, [:duplicate_bag, :named_table])} end)
-        {_, mentions} = Map.get_and_update(state, :mentions, fn currentVal -> {currentVal, :ets.new(:mentions, [:duplicate_bag, :named_table])} end)
+        {_, hashtags} = Map.get_and_update(state, :hashtags, fn currentVal -> {currentVal, :ets.new(:hashtags, [:set, :named_table])} end)
+        {_, mentions} = Map.get_and_update(state, :mentions, fn currentVal -> {currentVal, :ets.new(:mentions, [:set, :named_table])} end)
         {_, simulator_id} = Map.get_and_update(state, :simulator_id, fn currentVal -> {currentVal, 1} end)
         {_, tweet_id} = Map.get_and_update(state, :tweet_id, fn currentVal -> {currentVal, 1} end)
         
+
+        range= 1..10
+        Enum.each(range, fn(hashtag) -> (
+            hashtag_id="#h#{hashtag}"
+            :ets.insert(:hashtags,{hashtag_id,{}})
+        )end)
+
+        IO.puts "Completed insertion of hashtags"
         state = Map.merge(state, tweets)
         state = Map.merge(state, users)
         state = Map.merge(state, hashtags)
@@ -41,8 +49,12 @@ defmodule Engine do
     # Might want to add password / login table for part 2 right now if all goes well...
     def handle_cast({:register_user, user_id}, state) do
         users = state[:users]
+        mentions = state[:mentions]
         # IO.inspect("Connecting user: #{user_id}")
         :ets.insert(users, {user_id, {}, {user_id}})
+
+        mentions_id = "@#{user_id}"
+        :ets.insert(mentions, {mentions_id,{}})
         {:noreply, state}
     end
 
@@ -76,17 +88,30 @@ defmodule Engine do
         users = state[:users]
         list_of_hashtags = Regex.scan(~r/\B#[a-zA-Z0-9_]+/, tweet)
         list_of_mentions = Regex.scan(~r/\B@[a-zA-Z0-9_]+/, tweet)
-        Enum.each(list_of_hashtags, fn innerList -> {
-            Enum.each(innerList, fn hashtag_id -> {
-                :ets.insert(hashtags, {hashtag_id, {user_id, tweet}})
-             } end)
-        } end)
+        Enum.each(list_of_hashtags, fn (innerList) -> (
+            Enum.each(innerList, fn (hashtag_id) -> (
+                hashtag_entry = :ets.lookup(hashtags, hashtag_id)
+                #only one entry can be found... so we fetch only the first value...
+                tuple_hashtag_entry = List.first(hashtag_entry)
+                tuple_hashtag_tweet = elem(tuple_hashtag_entry, 1)
+                tuple_hashtag_tweet = Tuple.append(tuple_hashtag_tweet, {user_id, tweet})
+                :ets.insert(hashtags, {hashtag_id, tuple_hashtag_tweet})
+             ) end)
+        ) end)
 
-        Enum.each(list_of_mentions, fn innerList -> {
-            Enum.each(innerList, fn mentions_id -> {
-                :ets.insert(mentions, {mentions_id, {user_id, mentions}})
-            } end)
-        } end)
+        Enum.each(list_of_mentions, fn (innerList) -> (
+            Enum.each(innerList, fn (mentions_id) -> (
+
+                mentions_entry = :ets.lookup(mentions, mentions_id)
+                #  IO.inspect "The mentions entry #{inspect mentions_entry} for #{mentions_id}"
+                #only one entry can be found... so we fetch only the first value...
+                tuple_mentions_entry = List.first(mentions_entry)
+                tuple_mentions_tweet = elem(tuple_mentions_entry, 1)
+                tuple_mentions_tweet = Tuple.append(tuple_mentions_tweet, {user_id, tweet})
+                #  IO.inspect "The tuple to be entered #{inspect tuple_mentions_tweet} "
+                :ets.insert(mentions, {mentions_id, tuple_mentions_tweet})
+             ) end)
+         ) end)
 
         :ets.insert(tweets, {user_id, {tweet_id,tweet}})
         {_, tweet_id} = Map.get_and_update(state, :tweet_id, fn currentVal -> {currentVal, tweet_id + 1} end)
@@ -144,7 +169,9 @@ defmodule Engine do
     def handle_call({:query_mention, mention}, _from, state) do
         mentions = state[:mentions]
         mentions = :ets.lookup(mentions, mention)
+        #  IO.puts "Lookup --> #{inspect mentions}"
         mentions = List.first(mentions)
+        # IO.puts "Val returned --> #{inspect mentions }"
         {:reply, mentions , state}
     end
 

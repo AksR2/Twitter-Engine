@@ -22,15 +22,15 @@ defmodule Client do
         {:reply,is_alive,state}
     end
 
-    def handle_cast({:random_query,user_id,num_users},state) do
-        tup_tweets = random_query(num_users)
+    def handle_cast({:random_query,user_id,num_users,sim_name},state) do
+        tup_tweets = random_query(num_users,sim_name)
         num_tweets = tuple_size(tup_tweets)
-        IO.puts "The number of tweets for query by #{user_id}: #{num_tweets}"
+        # IO.puts "The number of tweets for query by #{user_id}: #{num_tweets}"
         {:noreply,state}
     end
 
-    def handle_cast({:send_tweets,user_id,num_users}, state) do
-        tweet_body = random_tweet(num_users, user_id)
+    def handle_cast({:send_tweets,user_id,sim_name,num_users}, state) do
+        tweet_body = random_tweet(num_users, user_id,sim_name)
         GenServer.cast({:global ,:Daddy},{:tweet,user_id,tweet_body})
         {:noreply,state}
     end
@@ -38,7 +38,7 @@ defmodule Client do
     def handle_cast({:recieve_tweets, self_name, tup_tweets},state) do
         #check number 
         num_tweets = tuple_size(tup_tweets)
-        IO.puts "The number of tweets recieved by #{self_name}: #{num_tweets}"
+        # IO.puts "The number of tweets recieved by #{self_name}: #{num_tweets}"
         {:noreply, state}
     end
 
@@ -49,9 +49,9 @@ defmodule Client do
         "#h#{hashtag}"
     end
 
-    def random_user_id_gen(num_users) do
+    def random_user_id_gen(num_users,sim_name) do
         user_id = Enum.random(1..num_users)
-        "c#{user_id}"
+        "#{sim_name}c#{user_id}"
     end
 
     # 0: Only hashtag
@@ -59,15 +59,18 @@ defmodule Client do
     # 2: Hashtag and mention
     # 3: Nothing normal text
 
-    def random_tweet(num_users, user_id) do
+    def random_tweet(num_users, user_id, sim_name) do
         list_conditional = [0, 1, 2, 3]
         conditional = Enum.random(list_conditional)
         
         max_lim = round(Float.ceil(num_users/ user_id))
-        max_lim = Float.ceil(max_lim/2)
-        followers_range = 1..max_lim
-        user_id1 = Enum.random(followers_range)
-        user_id2 = Enum.random(followers_range)
+        max_lim = round(Float.ceil(max_lim/2))
+        # followers_range = 1..max_lim
+        # user_id1 = Enum.random(followers_range)
+        # user_id2 = Enum.random(followers_range)
+
+        user_id1 = random_user_id_gen(max_lim, sim_name)
+        user_id2 = random_user_id_gen(max_lim, sim_name)
 
         hashtag1 = random_hashtag_gen()
         hashtag2 = random_hashtag_gen()
@@ -100,9 +103,9 @@ defmodule Client do
     # 1: Hashtag
     # 2: Mention
     # returns tup_tweets
-    def random_query(num_users) do
+    def random_query(num_users,sim_name) do
         conditional = Enum.random(1..2)
-        user_id = random_user_id_gen(num_users)
+        user_id = random_user_id_gen(num_users,sim_name)
         user_id_mention = "@#{user_id}"
         hashtag = random_hashtag_gen()
         tup_tweets=
