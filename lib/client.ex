@@ -30,7 +30,7 @@ defmodule Client do
     end
 
     def handle_cast({:send_tweets,user_id,num_users}, state) do
-        tweet_body = random_tweet(num_users)
+        tweet_body = random_tweet(num_users, user_id)
         GenServer.cast({:global ,:Daddy},{:tweet,user_id,tweet_body})
         {:noreply,state}
     end
@@ -59,12 +59,15 @@ defmodule Client do
     # 2: Hashtag and mention
     # 3: Nothing normal text
 
-    def random_tweet(num_users) do
+    def random_tweet(num_users, user_id) do
         list_conditional = [0, 1, 2, 3]
         conditional = Enum.random(list_conditional)
-        user_id1 = random_user_id_gen(num_users)
-        user_id2 = random_user_id_gen(num_users)
         
+        max_lim = round(Float.ceil(num_users/ user_id))
+        max_lim = Float.ceil(max_lim/2)
+        followers_range = 1..max_lim
+        user_id1 = Enum.random(followers_range)
+        user_id2 = Enum.random(followers_range)
 
         hashtag1 = random_hashtag_gen()
         hashtag2 = random_hashtag_gen()

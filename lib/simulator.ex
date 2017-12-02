@@ -53,7 +53,7 @@ defmodule Simulator do
     def send_tweet(num_users, num_tweets, sim_name) do
         user_range= 1..num_users
         Enum.each(user_range, fn(user_id) -> (
-            random_tweet=Client.random_tweet(num_users)
+            random_tweet=Client.random_tweet(num_users,user_id)
             user_id_atom=String.to_existing_atom("#{sim_name}c#{user_id}")
             GenServer.cast({:global , :Daddy},{:tweet, user_id_atom, random_tweet})
          ) end)
