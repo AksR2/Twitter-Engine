@@ -1,20 +1,25 @@
 defmodule Client do
     use GenServer
 
-    def startClient(id) do
-        {:ok, pid} = Genserver.start(__MODULE__, init_opts,name: id)
-        {:ok, pid}
+    def testEngine() do 
+        GenServer.call({:global, :Daddy},{:send_unique_code})
+    end
+
+    def start_client(client_name) do
+        {:ok, client_name} = GenServer.start(__MODULE__, "",name: {:global, client_name})
+        {:ok, client_name}
     end
 
     def init() do
-        state=%init{}
+        state=%{}
         {_,conn_stat} = Map.get_and_update(state, :conn_stat, fn currentVal -> {currentVal, true} end)
         state = Map.merge(state, conn_stat)
         {:ok,state}
     end
 
-    def handle_call({:is_alive}, from, state) do
-        {:reply,state[:conn_stat], state}
+    def handle_call({:is_alive}, _from, state) do
+        is_alive=state[:conn_stat]
+        {:reply,is_alive,state}
     end
 
     def handle_cast({:random_query,user_id,num_users},state) do
@@ -26,7 +31,7 @@ defmodule Client do
 
     def handle_cast({:send_tweets,user_id,num_users}, state) do
         tweet_body = random_tweet(num_users)
-        GenServer.cast(Daddy,{:tweet,user_id,tweet_body})
+        GenServer.cast({:global ,:Daddy},{:tweet,user_id,tweet_body})
         {:noreply,state}
     end
 
@@ -41,7 +46,7 @@ defmodule Client do
     # 10 hashtags only.
     def random_hashtag_gen() do
         hashtag= Enum.random(1..10)
-        "#h#{hastag}"
+        "#h#{hashtag}"
     end
 
     def random_user_id_gen(num_users) do
@@ -57,7 +62,7 @@ defmodule Client do
     def random_tweet(num_users) do
         list_conditional = [0, 1, 2, 3]
         conditional = Enum.random(list_conditional)
-        user_id1 = random_user_id_gen(nunm_users)
+        user_id1 = random_user_id_gen(num_users)
         user_id2 = random_user_id_gen(num_users)
         
 
@@ -67,7 +72,6 @@ defmodule Client do
         tweet = cond do
             conditional == 0 ->
                 number_hashtags = Enum.random(1..2)
-                tweet_text = ""
                 cond do
                     number_hashtags == 1 ->
                         "This is a #{hashtag1} hashtag string"
@@ -76,7 +80,6 @@ defmodule Client do
                 end
             conditional == 1 ->
                 number_mentions = Enum.random(1..2)
-                tweet_text = ""
                 cond do
                     number_mentions == 1 ->
                         "This is a single mention string mentioning @#{user_id1}"
@@ -102,9 +105,9 @@ defmodule Client do
         tup_tweets=
         cond do
             conditional == 1 ->
-                GenServer.call(Daddy,{:query_hashtag, hashtag})
+                GenServer.call({:global ,:Daddy},{:query_hashtag, hashtag})
             conditional == 2 ->
-                GenServer.call(Daddy,{:query_mention, user_id_mention})
+                GenServer.call({:global , :Daddy},{:query_mention, user_id_mention})
         end
 
         tup_tweets

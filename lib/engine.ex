@@ -1,9 +1,14 @@
 defmodule Engine do
     use GenServer
 
-    def start_link() do
-        
+
+    def startEngine() do
+        name = :Daddy
+        GenServer.start(__MODULE__, :ok, name:  {:global, name})
+        IO.puts "Started the daddy"
     end
+
+ 
 
     # table Formats
     # :users {userid, followers, subscribed}}
@@ -15,6 +20,7 @@ defmodule Engine do
     # will probably have to create a reverse map...
 
     def init(:ok) do
+        IO.puts "Inside init"
         state = %{}
         {_, tweets} = Map.get_and_update(state, :tweets, fn currentVal -> {currentVal, :ets.new(:tweets, [:set, :named_table])} end)
         {_, users} = Map.get_and_update(state, :users, fn currentVal -> {currentVal, :ets.new(:users, [:set, :named_table])} end)
@@ -30,12 +36,6 @@ defmodule Engine do
         state = Map.merge(state, simulator_id)
         state = Map.merge(state, tweet_id)
         {:ok, state}
-    end
-
-    #the user id number from the server...
-    def genClientIDatom(userid) do
-        #append id with a c
-        String.to_atom("c#{userid}")
     end
 
     # Might want to add password / login table for part 2 right now if all goes well...
@@ -78,7 +78,7 @@ defmodule Engine do
         Enum.each(list_of_hashtags, fn innerList -> {
             Enum.each(innerList, fn hashtag_id -> {
                 :ets.insert(hashtags, {hashtag_id, {user_id, tweet}})
-            } end)
+             } end)
         } end)
 
         Enum.each(list_of_mentions, fn innerList -> {
@@ -87,7 +87,7 @@ defmodule Engine do
             } end)
         } end)
 
-        :ets.insert(tweets, {user_id, {tweet_id,tweet})
+        :ets.insert(tweets, {user_id, {tweet_id,tweet}})
         {_, tweet_id} = Map.get_and_update(state, :tweet_id, fn currentVal -> {currentVal, tweet_id + 1} end)
         state = Map.merge(state, tweet_id)
 
@@ -96,15 +96,20 @@ defmodule Engine do
         tuple_user_entry = List.first(user_entry)
         tuple_user_followers = elem(tuple_user_entry, 1)
         list_followers = Tuple.to_list(tuple_user_followers)
-        Enum.each(list_followers, fn follower_id -> {
-            isAlive = Genserver.call(follower_id, {:is_alive})
-            if isAlive == true do
-                GenServer.cast(follower_id, {:recieve_tweets, tweet}) 
+
+        Enum.each(list_followers, fn (follower_id) -> (
+
+            is_alive = GenServer.call({:global, follower_id}, {:is_alive})
+            cond do
+                is_alive == true ->
+                    GenServer.cast({:global,follower_id}, {:recieve_tweets, tweet}) 
+                true ->
+                     IO.puts "Tweet not sent to #{follower_id}"
             end
             # should send the tweet to all the followers currently online...
             #check state of client whether he is online before sending the tweet...
             #this is the live functionality...
-        } end)
+         ) end)
         
         {:noreply, state}
     end
@@ -112,12 +117,12 @@ defmodule Engine do
     #fetchtweets when user joins in the network...
     # the user_id well be a genserver....
     #should be a call since it will 
-    def handle_call({:fetchtweets, user_id}, from ,state) do
+    def handle_call({:fetchtweets, user_id}, _from ,state) do
         users = state[:users]
         user_entry = :ets.lookup(users, user_id)
         tweets_table= state[:tweets]
         #list subscribed
-        tuple_of_subscribed= List.first(elem(user_enty,1))
+        tuple_of_subscribed= List.first(elem(user_entry,1))
         list_of_subscribed=Tuple.to_list(tuple_of_subscribed)
         tup_tweet=
         Enum.reduce(list_of_subscribed,{}, fn(subscribed_id,acc_tup_tweets) -> (
@@ -128,14 +133,14 @@ defmodule Engine do
         {:reply, tup_tweet, state}
     end
 
-    def handle_call({:query_hashtag, hashtag}, from, state) do
+    def handle_call({:query_hashtag, hashtag}, _from, state) do
         hashtags = state[:hastags]
         hashtags = :ets.lookup(hashtags, hashtag)
         hashtags = List.first(hashtags)
         {:reply, hashtags, state}
     end
 
-    def handle_call({:query_mention, mention}, from, state) do
+    def handle_call({:query_mention, mention}, _from, state) do
         mentions = state[:mentions]
         mentions = :ets.lookup(mentions, mention)
         mentions = List.first(mentions)
@@ -143,12 +148,12 @@ defmodule Engine do
     end
 
     #send unique code to simulator
-    def handle_call({:send_unique_code}, from, state) do
+    def handle_call({:send_unique_code}, _from, state) do
         simulator_id = state[:simulator_id]
         simulator_name = "s" <> Integer.to_string(simulator_id)
         {_, simulator_id} = Map.get_and_update(state, :simulator_id, fn currentVal -> {currentVal, simulator_id + 1} end)
         state = Map.merge(state, simulator_id)
-        {:replay, simulator_name, state}
+        {:reply, simulator_name, state}
     end
 
 
