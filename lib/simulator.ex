@@ -9,7 +9,7 @@ defmodule Simulator do
 
     def simulate(num_users) do
         IO.puts("Getting code")
-        sim_name = GenServer.call({:global,:Daddy},{:send_unique_code})
+        sim_name = GenServer.call({:global,:Daddy},{:send_unique_code},:infinity)
         IO.puts("Creating users")
         create_users(num_users, sim_name)
         IO.puts("Setting followers")
@@ -68,7 +68,7 @@ defmodule Simulator do
         Enum.each(user_range, fn (user_id) -> (
             # random_tweet=Client.random_tweet(num_users)
             user_id_atom=String.to_existing_atom("#{sim_name}c#{user_id}")
-            tup = GenServer.call({:global , :Daddy}, {:fetch_tweets, user_id_atom})
+            tup = GenServer.call({:global , :Daddy}, {:fetch_tweets, user_id_atom},:infinity)
             # IO.inspect("#{user_id_atom} :")
             # IO.inspect(tup)
             num_tweets= tuple_size(tup)
@@ -84,7 +84,7 @@ defmodule Simulator do
 
         Enum.each( user_range, fn (user_id) -> (
             mention_id="@#{sim_name}c#{user_id}"
-            tup = GenServer.call({:global, :Daddy}, {:query_mention, mention_id})
+            tup = GenServer.call({:global, :Daddy}, {:query_mention, mention_id},:infinity)
             num_mentions = tuple_size(elem(tup,1))
             if (num_mentions != 0) do
                 IO.puts "The user_id: #{inspect user_id} has mentions : #{inspect num_mentions}"

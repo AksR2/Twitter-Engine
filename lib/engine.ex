@@ -150,7 +150,7 @@ defmodule Engine do
         tuple_user_entry = List.first(user_entry)
         tuple_of_subscribed = elem(tuple_user_entry, 2)
         list_subscribed = Tuple.to_list(tuple_of_subscribed)
-        IO.inspect(list_subscribed)
+        # IO.inspect(list_subscribed)
         tup_tweet=
         Enum.reduce(list_subscribed,{}, fn(subscribed_id,acc_tup_tweets) -> (
             tweets_by_subscribed=:ets.lookup(tweets_table,subscribed_id)
